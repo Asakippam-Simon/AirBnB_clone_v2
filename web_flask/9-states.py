@@ -1,34 +1,44 @@
 #!/usr/bin/python3
-"""Importing Flask to run the web app"""
-from flask import Flask, render_template
+"""Start a Flask web application
+- listening on 0.0.0.0, port 5000
+"""
 from models import storage
-from models.state import State
-
+from flask import Flask
+from flask import render_template
 
 app = Flask(__name__)
 
 
 @app.teardown_appcontext
-def close(self):
-    """ Method to close the session """
+def teardown(exc):
+    """Close SQLAlchemy session."""
     storage.close()
 
 
-@app.route('/states', strict_slashes=False)
-def state():
-    """Displays a html page with states"""
-    states = storage.all(State)
-    return render_template('9-states.html', states=states, mode='all')
+@app.route("/states", strict_slashes=False)
+def states_list():
+    """Display an HTML page
+    - H1: “States”
+    - UL: with the list of all State
+    - LI: <state.id>: <B><state.name></B>
+    """
+    states = storage.all("State")
+    return render_template("7-states_list.html", states=states)
 
 
-@app.route('/states/<id>', strict_slashes=False)
-def state_by_id(id):
-    """Displays a html page with citys of that state"""
-    for state in storage.all(State).values():
+@app.route("/states/<id>", strict_slashes=False)
+def states_id(id):
+    """Display an HTML page
+    - H1: “State: ”
+    - H3: “Cities:”
+    - UL: list of City sorted by name (A->Z)
+    - LI: <city.id>: <B><city.name></B>
+    """
+    for state in storage.all("State").values():
         if state.id == id:
-            return render_template('9-states.html', states=state, mode='id')
-    return render_template('9-states.html', states=state, mode='none')
+            return render_template("9-states.html", state=state)
+    return render_template("9-states.html")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port="5000")

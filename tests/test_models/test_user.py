@@ -1,70 +1,59 @@
 #!/usr/bin/python3
-"""test for user"""
-import unittest
+""" """
 import os
+from tests.test_models.test_base_model import test_basemodel
 from models.user import User
-from models.base_model import BaseModel
+from models.engine.file_storage import FileStorage
+from datetime import datetime
 
-
-class TestUser(unittest.TestCase):
-    """this will test the User class"""
+class test_User(test_basemodel):
+    """ """
 
     @classmethod
     def setUpClass(cls):
-        """set up for test"""
-        cls.user = User()
-        cls.user.first_name = "Kevin"
-        cls.user.last_name = "Yook"
-        cls.user.email = "yook00627@gmamil.com"
-        cls.user.password = "secret"
+        """ """
+        try:
+            os.rename("file.json", "tmp")
+        except IOError:
+            pass
+        FileStorage._FileStorage__objects = {}
+        cls.user = User(email="lann@houselannister.com", password="revelc")
+        cls.filestorage = FileStorage()
 
     @classmethod
-    def teardown(cls):
-        """at the end of the test this will tear it down"""
-        del cls.user
-
-    def tearDown(self):
-        """teardown"""
+    def tearDownClass(cls):
+        """ """
         try:
             os.remove("file.json")
-        except Exception:
+        except IOError:
             pass
+        try:
+            os.rename("tmp", "file.json")
+        except IOError:
+            pass
+        del cls.user
+        del cls.filestorage
 
-    def test_checking_for_docstring_user(self):
-        """checking for docstrings"""
-        self.assertIsNotNone(User.__doc__)
+    def test_attributes(self):
+        """ """
+        i = User()
+        self.assertEqual(str, type(i.id))
+        self.assertEqual(datetime, type(i.created_at))
+        self.assertEqual(datetime, type(i.updated_at))
+        self.assertTrue(hasattr(i, "__tablename__"))
+        self.assertTrue(hasattr(i, "email"))
+        self.assertTrue(hasattr(i, "password"))
+        self.assertTrue(hasattr(i, "first_name"))
+        self.assertTrue(hasattr(i, "last_name"))
 
-    def test_attributes_user(self):
-        """chekcing if User have attributes"""
-        self.assertTrue('email' in self.user.__dict__)
-        self.assertTrue('id' in self.user.__dict__)
-        self.assertTrue('created_at' in self.user.__dict__)
-        self.assertTrue('updated_at' in self.user.__dict__)
-        self.assertTrue('password' in self.user.__dict__)
-        self.assertTrue('first_name' in self.user.__dict__)
-        self.assertTrue('last_name' in self.user.__dict__)
-
-    def test_is_subclass_user(self):
-        """test if User is subclass of Basemodel"""
-        self.assertTrue(issubclass(self.user.__class__, BaseModel), True)
-
-    def test_attribute_types_user(self):
-        """test attribute type for User"""
-        self.assertEqual(type(self.user.email), str)
-        self.assertEqual(type(self.user.password), str)
-        self.assertEqual(type(self.user.first_name), str)
-        self.assertEqual(type(self.user.first_name), str)
-
-    @unittest.skipIf(os.getenv("HBNB_TYPE_STORAGE") == 'db', 'Not file engine')
-    def test_save_user(self):
-        """test if the save works"""
-        self.user.save()
-        self.assertNotEqual(self.user.created_at, self.user.updated_at)
-
-    def test_to_dict_user(self):
-        """test if dictionary works"""
-        self.assertEqual('to_dict' in dir(self.user), True)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_str(self):
+        """ """
+        i = self.user.__str__()
+        self.assertIn("[User] ({})".format(self.user.id), i)
+        self.assertIn("'id': '{}'".format(self.user.id), i)
+        self.assertIn("'created_at': {}".format(
+            repr(self.user.created_at)), i)
+        self.assertIn("'updated_at': {}".format(
+            repr(self.user.updated_at)), i)
+        self.assertIn("'email': '{}'".format(self.user.email), i)
+        self.assertIn("'password': '{}'".format(self.user.password), i)

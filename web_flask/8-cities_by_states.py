@@ -1,25 +1,32 @@
 #!/usr/bin/python3
-"""Importing Flask to run the web app"""
-from flask import Flask, render_template
+"""Start a Flask web application
+- listening on 0.0.0.0, port 5000
+"""
 from models import storage
-from models.state import State
-
+from flask import Flask
+from flask import render_template
 
 app = Flask(__name__)
 
 
 @app.teardown_appcontext
-def close(self):
-    """ Method to close the session """
+def teardown(exc):
+    """Close SQLAlchemy session."""
     storage.close()
 
 
-@app.route('/cities_by_states', strict_slashes=False)
+@app.route("/cities_by_states", strict_slashes=False)
 def cities_by_states():
-    """Displays a html page with states and cities"""
-    states = storage.all(State)
-    return render_template('8-cities_by_states.html', states=states)
+    """Display an HTML page
+    - H1: “States”
+    - UL: list of all State sorted by name (A->Z)
+    - LI: <state.id>: <B><state.name></B>
+        - UL: list of City
+        - LI: <city.id>: <B><city.name></B>
+    """
+    states = storage.all("State")
+    return render_template("8-cities_by_states.html", states=states)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port="5000")

@@ -1,27 +1,53 @@
 #!/usr/bin/env bash
-# Bash script that sets up web servers for the deployment of web_static
-sudo apt-get update
-sudo apt-get -y install nginx
-sudo ufw allow 'Nginx HTTP'
+# Configurate Nginx with:
+# Port 80
+# Permanent redirection /redirect_me.
+# Use custom 404 error page
+# Custom header X-Served-By
+# Prepare server to deploy
 
-sudo mkdir -p /data/
-sudo mkdir -p /data/web_static/
-sudo mkdir -p /data/web_static/releases/
-sudo mkdir -p /data/web_static/shared/
-sudo mkdir -p /data/web_static/releases/test/
-sudo touch /data/web_static/releases/test/index.html
-sudo echo "<html>
+apt-get update
+apt-get -y install nginx
+
+# Create forlders
+mkdir -p /data/web_static/{releases/test,shared}
+
+# Create default page
+echo "<html>
   <head>
   </head>
   <body>
     Holberton School
   </body>
-</html>" | sudo tee /data/web_static/releases/test/index.html
+</html>" > /data/web_static/releases/test/index.html
 
-sudo ln -s -f /data/web_static/releases/test/ /data/web_static/current
+# Create symbolic link
+ln -sf /data/web_static/releases/test/ /data/web_static/current
 
-sudo chown -R ubuntu:ubuntu /data/
+# Change ownership
+chown -R ubuntu /data
+chgrp -R ubuntu /data
 
-sudo sed -i '/listen 80 default_server/a location /hbnb_static { alias /data/web_static/current/;}' /etc/nginx/sites-enabled/default
+# Configurate server
+ufw allow 'Nginx HTTP'
+f_config="/etc/nginx/sites-available/default"
 
-sudo service nginx restart
+# Add 404 redirection
+echo "Ceci n'est pas une page" > /usr/share/nginx/html/my_404.html
+new_404="my_404.html"
+l_new_404="/my_404.html {root /usr/share/nginx/html;\n internal;}"
+sed -i "/listen 80 default_server/a error_page 404 /$new_404; location = $l_new_404" $f_config
+
+# Add redirection
+new_site="https://github.com/EstephaniaCalvoC/"
+sed -i "/listen 80 default_server/a rewrite ^/redirect_me $new_site permanent;" $f_config
+
+# Add header
+sed -i "/listen 80 default_server/a add_header X-Served-By \"$HOSTNAME\";" $f_config
+
+# Add alias
+sed -i '/listen 80 default_server/a location /hbnb_static/ { alias /data/web_static/current/;}' $f_config
+
+service nginx restart
+
+exit 0

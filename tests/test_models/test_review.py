@@ -1,67 +1,73 @@
 #!/usr/bin/python3
-"""test for review"""
-import unittest
+""" """
 import os
+from tests.test_models.test_base_model import test_basemodel
+from models.place import Place
+from models.city import City
+from models.state import State
+from models.user import User
 from models.review import Review
-from models.base_model import BaseModel
+from models.engine.file_storage import FileStorage
+from datetime import datetime
 
-
-class TestReview(unittest.TestCase):
-    """this will test the place class"""
+class test_review(test_basemodel):
+    """ """
 
     @classmethod
     def setUpClass(cls):
-        """set up for test"""
-        cls.rev = Review()
-        cls.rev.place_id = "4321-dcba"
-        cls.rev.user_id = "123-bca"
-        cls.rev.text = "The srongest in the Galaxy"
+        """ """
+        try:
+            os.rename("file.json", "tmp")
+        except IOError:
+            pass
+        FileStorage._FileStorage__objects = {}
+        cls.state = State(name="Western coast")
+        cls.city = City(name="Lannisport", state_id=cls.state.id)
+        cls.user = User(email="lann@houselannister.com", password="revelc")
+        cls.place = Place(city_id=cls.city.id, user_id=cls.user.id,
+                          name="Casterly Rock")
+        cls.review = Review(text="Hear Me Roar!", place_id=cls.place.id,
+                            user_id=cls.user.id)
+        cls.filestorage = FileStorage()
 
     @classmethod
-    def teardown(cls):
-        """at the end of the test this will tear it down"""
-        del cls.rev
-
-    def tearDown(self):
-        """teardown"""
+    def tearDownClass(cls):
+        """ """
         try:
             os.remove("file.json")
-        except Exception:
+        except IOError:
             pass
+        try:
+            os.rename("tmp", "file.json")
+        except IOError:
+            pass
+        del cls.state
+        del cls.city
+        del cls.user
+        del cls.place
+        del cls.review
+        del cls.filestorage
 
-    def test_checking_for_docstring_review(self):
-        """checking for docstrings"""
-        self.assertIsNotNone(Review.__doc__)
+    def test_attributes(self):
+        """Check for attributes."""
+        i = Review()
+        self.assertEqual(str, type(i.id))
+        self.assertEqual(datetime, type(i.created_at))
+        self.assertEqual(datetime, type(i.updated_at))
+        self.assertTrue(hasattr(i, "__tablename__"))
+        self.assertTrue(hasattr(i, "text"))
+        self.assertTrue(hasattr(i, "place_id"))
+        self.assertTrue(hasattr(i, "user_id"))
 
-    def test_attributes_review(self):
-        """chekcing if review have attributes"""
-        self.assertTrue('id' in self.rev.__dict__)
-        self.assertTrue('created_at' in self.rev.__dict__)
-        self.assertTrue('updated_at' in self.rev.__dict__)
-        self.assertTrue('place_id' in self.rev.__dict__)
-        self.assertTrue('text' in self.rev.__dict__)
-        self.assertTrue('user_id' in self.rev.__dict__)
-
-    def test_is_subclass_review(self):
-        """test if review is subclass of BaseModel"""
-        self.assertTrue(issubclass(self.rev.__class__, BaseModel), True)
-
-    def test_attribute_types_review(self):
-        """test attribute type for Review"""
-        self.assertEqual(type(self.rev.text), str)
-        self.assertEqual(type(self.rev.place_id), str)
-        self.assertEqual(type(self.rev.user_id), str)
-
-    @unittest.skipIf(os.getenv("HBNB_TYPE_STORAGE") == 'db', 'Not file engine')
-    def test_save_review(self):
-        """test if the save works"""
-        self.rev.save()
-        self.assertNotEqual(self.rev.created_at, self.rev.updated_at)
-
-    def test_to_dict_review(self):
-        """test if dictionary works"""
-        self.assertEqual('to_dict' in dir(self.rev), True)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_str(self):
+        """ """
+        i = self.review.__str__()
+        self.assertIn("[Review] ({})".format(self.review.id), i)
+        self.assertIn("'id': '{}'".format(self.review.id), i)
+        self.assertIn("'created_at': {}".format(
+            repr(self.review.created_at)), i)
+        self.assertIn("'updated_at': {}".format(
+            repr(self.review.updated_at)), i)
+        self.assertIn("'text': '{}'".format(self.review.text), i)
+        self.assertIn("'user_id': '{}'".format(self.review.user_id), i)
+        self.assertIn("'place_id': '{}'".format(self.review.place_id), i)

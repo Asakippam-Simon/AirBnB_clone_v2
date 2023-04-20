@@ -1,91 +1,76 @@
 #!/usr/bin/python3
-"""test for place"""
-import unittest
+""" """
 import os
+from tests.test_models.test_base_model import test_basemodel
 from models.place import Place
-from models.base_model import BaseModel
+from models.city import City
+from models.state import State
+from models.user import User
+from models.engine.file_storage import FileStorage
+from datetime import datetime
 
 
-class TestPlace(unittest.TestCase):
-    """this will test the place class"""
+class test_Place(test_basemodel):
+    """ """
 
     @classmethod
     def setUpClass(cls):
-        """set up for test"""
-        cls.place = Place()
-        cls.place.city_id = "1234-abcd"
-        cls.place.user_id = "4321-dcba"
-        cls.place.name = "Death Star"
-        cls.place.description = "UNLIMITED POWER!!!!!"
-        cls.place.number_rooms = 1000000
-        cls.place.number_bathrooms = 1
-        cls.place.max_guest = 607360
-        cls.place.price_by_night = 10
-        cls.place.latitude = 160.0
-        cls.place.longitude = 120.0
-        cls.place.amenity_ids = ["1324-lksdjkl"]
+        """ """
+        try:
+            os.rename("file.json", "tmp")
+        except IOError:
+            pass
+        FileStorage._FileStorage__objects = {}
+        cls.state = State(name="Western coast")
+        cls.city = City(name="Lannisport", state_id=cls.state.id)
+        cls.user = User(email="lann@houselannister.com", password="revelc")
+        cls.place = Place(city_id=cls.city.id, user_id=cls.user.id,
+                          name="Casterly Rock")
+        cls.filestorage = FileStorage()
 
     @classmethod
-    def teardown(cls):
-        """at the end of the test this will tear it down"""
-        del cls.place
-
-    def tearDown(self):
-        """teardown"""
+    def tearDownClass(cls):
+        """ """
         try:
             os.remove("file.json")
-        except Exception:
+        except IOError:
             pass
+        try:
+            os.rename("tmp", "file.json")
+        except IOError:
+            pass
+        del cls.state
+        del cls.city
+        del cls.user
+        del cls.place
+        del cls.filestorage
 
-    def test_checking_for_docstring_place(self):
-        """checking for docstrings"""
-        self.assertIsNotNone(Place.__doc__)
+    def test_attributes(self):
+        """Check for attributes."""
+        i = Place()
+        self.assertEqual(str, type(i.id))
+        self.assertEqual(datetime, type(i.created_at))
+        self.assertEqual(datetime, type(i.updated_at))
+        self.assertTrue(hasattr(i, "__tablename__"))
+        self.assertTrue(hasattr(i, "city_id"))
+        self.assertTrue(hasattr(i, "name"))
+        self.assertTrue(hasattr(i, "description"))
+        self.assertTrue(hasattr(i, "number_rooms"))
+        self.assertTrue(hasattr(i, "number_bathrooms"))
+        self.assertTrue(hasattr(i, "max_guest"))
+        self.assertTrue(hasattr(i, "price_by_night"))
+        self.assertTrue(hasattr(i, "latitude"))
+        self.assertTrue(hasattr(i, "longitude"))
 
-    def test_attributes_place(self):
-        """chekcing if amenity have attributes"""
-        self.assertTrue('id' in self.place.__dict__)
-        self.assertTrue('created_at' in self.place.__dict__)
-        self.assertTrue('updated_at' in self.place.__dict__)
-        self.assertTrue('city_id' in self.place.__dict__)
-        self.assertTrue('user_id' in self.place.__dict__)
-        self.assertTrue('name' in self.place.__dict__)
-        self.assertTrue('description' in self.place.__dict__)
-        self.assertTrue('number_rooms' in self.place.__dict__)
-        self.assertTrue('number_bathrooms' in self.place.__dict__)
-        self.assertTrue('max_guest' in self.place.__dict__)
-        self.assertTrue('price_by_night' in self.place.__dict__)
-        self.assertTrue('latitude' in self.place.__dict__)
-        self.assertTrue('longitude' in self.place.__dict__)
-        self.assertTrue('amenity_ids' in self.place.__dict__)
-
-    def test_is_subclass_place(self):
-        """test if Place is subclass of Basemodel"""
-        self.assertTrue(issubclass(self.place.__class__, BaseModel), True)
-
-    def test_attribute_types_place(self):
-        """test attribute type for Place"""
-        self.assertEqual(type(self.place.city_id), str)
-        self.assertEqual(type(self.place.user_id), str)
-        self.assertEqual(type(self.place.name), str)
-        self.assertEqual(type(self.place.description), str)
-        self.assertEqual(type(self.place.number_rooms), int)
-        self.assertEqual(type(self.place.number_bathrooms), int)
-        self.assertEqual(type(self.place.max_guest), int)
-        self.assertEqual(type(self.place.price_by_night), int)
-        self.assertEqual(type(self.place.latitude), float)
-        self.assertEqual(type(self.place.longitude), float)
-        self.assertEqual(type(self.place.amenity_ids), list)
-
-    @unittest.skipIf(os.getenv("HBNB_TYPE_STORAGE") == 'db', 'Not file engine')
-    def test_save_place(self):
-        """test if the save works"""
-        self.place.save()
-        self.assertNotEqual(self.place.created_at, self.place.updated_at)
-
-    def test_to_dict_place(self):
-        """test if dictionary works"""
-        self.assertEqual('to_dict' in dir(self.place), True)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_str(self):
+        """ """
+        i = self.place.__str__()
+        self.assertIn("[Place] ({})".format(self.place.id), i)
+        self.assertIn("'id': '{}'".format(self.place.id), i)
+        self.assertIn("'created_at': {}".format(
+            repr(self.place.created_at)), i)
+        self.assertIn("'updated_at': {}".format(
+            repr(self.place.updated_at)), i)
+        self.assertIn("'city_id': '{}'".format(self.place.city_id), i)
+        self.assertIn("'user_id': '{}'".format(self.place.user_id), i)
+        self.assertIn("'name': '{}'".format(self.place.name), i)
