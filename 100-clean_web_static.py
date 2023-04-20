@@ -1,102 +1,91 @@
 #!/usr/bin/python3
-"""Define the tasks to_pack deploy web_static"""
-
-from fabric.api import *
 from datetime import datetime
+from fabric.api import *
 from os import path
 
-n = datetime.now()
-env.hosts = ['35.243.155.96', '54.227.102.243']
+
+env.hosts = ['35.229.93.37', '54.196.213.127']
 
 
+@runs_once
 def do_pack():
-    """Generate a .tgz archive from the contents of the web_static."""
+    """Generates a .tgz archive from the contents
+    of the web_static folder of this repository.
+    """
 
-    data = (n.year, n.month, n.day, n.hour, n.minute, n.second)
-    file_name = 'versions/web_static_{}{}{}{}{}{}.tgz'.format(*data)
-    local('mkdir -p versions')
-    command = local("tar -cvzf " + file_name + " ./web_static/")
-    if command.succeeded:
-        return file_name
-    return None
+    d = datetime.now()
+    now = d.strftime('%Y%m%d%H%M%S')
+    path = "versions/web_static_{}.tgz".format(now)
+
+    local("mkdir -p versions")
+    local("tar -czvf {} web_static".format(path))
+    return path
 
 
 def do_deploy(archive_path):
-    """Distribute an archive to your web servers"""
+    """Distributes a .tgz archive through web servers
+    """
 
-    if not path.exists(archive_path):
-        print("path no existe")
-        return False
+    if path.exists(archive_path):
+        archive = archive_path.split('/')[1]
+        a_path = "/tmp/{}".format(archive)
+        folder = archive.split('.')[0]
+        f_path = "/data/web_static/releases/{}/".format(folder)
 
-    put_file = put(archive_path, "/tmp/")
-    if put_file.failed:
-        return False
+        put(archive_path, a_path)
+        run("mkdir -p {}".format(f_path))
+        run("tar -xzf {} -C {}".format(a_path, f_path))
+        run("rm {}".format(a_path))
+        run("mv -f {}web_static/* {}".format(f_path, f_path))
+        run("rm -rf {}web_static".format(f_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(f_path))
 
-    file_name = archive_path[len("versions/"): -1 * len(".tgz")]
-    dest_folder = '/data/web_static/releases/'
-    create_folder = run('mkdir -p ' + dest_folder + file_name + '/')
-    if create_folder.failed:
-        return False
+        return True
 
-    unpack_command_1 = 'tar -xzf /tmp/' + file_name + '.tgz'
-    unpack_command_2 = ' -C /data/web_static/releases/' + file_name + '/'
-    unpack = run(unpack_command_1 + unpack_command_2)
-    if unpack.failed:
-        return False
-
-    del_archive = run('rm /tmp/' + file_name + '.tgz')
-    if del_archive.failed:
-        return False
-
-    move = run('mv /data/web_static/releases/' +
-               file_name +
-               '/web_static/* /data/web_static/releases/' +
-               file_name +
-               '/')
-    if move.failed:
-        return False
-
-    del_folder = run('rm -rf /data/web_static/releases/' +
-                     file_name +
-                     '/web_static')
-    if del_folder.failed:
-        return False
-
-    del_slink = run('rm -rf /data/web_static/current')
-    if del_slink.failed:
-        return False
-
-    create_slink = run('ln -sf /data/web_static/releases/' +
-                       file_name + '/' + ' /data/web_static/current')
-    if create_slink.failed:
-        return False
-
-    return True
+    return False
 
 
-def deploy():
-    """Run pack and deploy the web_statics"""
-    archive_path = do_pack()
-    if archive_path is None:
-        return False
-    return do_deploy(archive_path)
+def gets_out_of_date(number, _type):
+    """Gets a number of content that is out of date
+    """
+
+    if number == 0:
+        number = 1
+
+    if _type == 'local':
+        content = local("ls -td web_static_*", capture=True)
+    elif _type == 'remote':
+        content = run("ls -td web_static_*")
+
+    content_list = content.split()
+    out_of_date = content_list[number:]
+    return out_of_date
 
 
 def do_clean(number=0):
-    """Delete out-of-date archives"""
+    """Deletes out-of-date .tgz archives of web servers
+    """
 
-    n = int(number)
-    keep_one = 'ls -t | tail -n +2 | xargs rm -rfv'
-    keep_n = 'ls -t | tail -n +{} | xargs rm -rfv'
+    number = int(number)
 
-    with lcd('versions'):
-        if n == 0 or n == 1:
-            local(keep_one)
-        else:
-            local(keep_n.format(n + 1))
+    if number >= 0:
+        with lcd("versions"):
+            _files = gets_out_of_date(number, 'local')
 
-    with cd('/data/web_static/releases/'):
-        if n == 0 or n == 1:
-            run(keep_one)
-        else:
-            run(keep_n.format(n + 1))
+            for _file in _files:
+                local("rm -f {file}".format(file=_file))
+
+        with cd("/data/web_static/releases"):
+            _folders = gets_out_of_date(number, 'remote')
+
+            for _folder in _folders:
+                run("rm -rf {folder}".format(folder=_folder))
+
+
+def deploy():
+    """Creates and Distributes a .tgz archive through web servers
+    """
+
+    archive = do_pack()
+    return do_deploy(archive)

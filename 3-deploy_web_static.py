@@ -1,60 +1,54 @@
 #!/usr/bin/python3
-"""Define the task do_deploy to fabric (fab) command"""
-
+from datetime import datetime
 from fabric.api import *
 from os import path
 
-env.hosts = ['35.243.155.96', '54.227.102.243']
+
+env.hosts = ['35.229.93.37', '54.196.213.127']
+
+
+@runs_once
+def do_pack():
+    """Generates a .tgz archive from the contents
+    of the web_static folder of this repository.
+    """
+
+    d = datetime.now()
+    now = d.strftime('%Y%m%d%H%M%S')
+    path = "versions/web_static_{}.tgz".format(now)
+
+    local("mkdir -p versions")
+    local("tar -czvf {} web_static".format(path))
+    return path
 
 
 def do_deploy(archive_path):
-    """Distribute an archive to your web servers"""
+    """Distributes a .tgz archive through web servers
+    """
 
-    if not path.exists(archive_path):
-        print("path no existe")
-        return False
+    if path.exists(archive_path):
+        archive = archive_path.split('/')[1]
+        a_path = "/tmp/{}".format(archive)
+        folder = archive.split('.')[0]
+        f_path = "/data/web_static/releases/{}/".format(folder)
 
-    put_file = put(archive_path, "/tmp/")
-    if put_file.failed:
-        return False
+        put(archive_path, a_path)
+        run("mkdir -p {}".format(f_path))
+        run("tar -xzf {} -C {}".format(a_path, f_path))
+        run("rm {}".format(a_path))
+        run("mv -f {}web_static/* {}".format(f_path, f_path))
+        run("rm -rf {}web_static".format(f_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(f_path))
 
-    file_name = archive_path[len("versions/"): -1 * len(".tgz")]
-    dest_folder = '/data/web_static/releases/'
-    create_folder = run('mkdir -p ' + dest_folder + file_name + '/')
-    if create_folder.failed:
-        return False
+        return True
 
-    unpack_command_1 = 'tar -xzf /tmp/' + file_name + '.tgz'
-    unpack_command_2 = ' -C /data/web_static/releases/' + file_name + '/'
-    unpack = run(unpack_command_1 + unpack_command_2)
-    if unpack.failed:
-        return False
+    return False
 
-    del_archive = run('rm /tmp/' + file_name + '.tgz')
-    if del_archive.failed:
-        return False
 
-    move = run('mv /data/web_static/releases/' +
-               file_name +
-               '/web_static/* /data/web_static/releases/' +
-               file_name +
-               '/')
-    if move.failed:
-        return False
+def deploy():
+    """Creates and Distributes a .tgz archive through web servers
+    """
 
-    del_folder = run('rm -rf /data/web_static/releases/' +
-                     file_name +
-                     '/web_static')
-    if del_folder.failed:
-        return False
-
-    del_slink = run('rm -rf /data/web_static/current')
-    if del_slink.failed:
-        return False
-
-    create_slink = run('ln -sf /data/web_static/releases/' +
-                       file_name + '/' + ' /data/web_static/current')
-    if create_slink.failed:
-        return False
-
-    return True
+    archive = do_pack()
+    return do_deploy(archive)
